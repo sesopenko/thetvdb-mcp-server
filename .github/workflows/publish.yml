@@ -1,0 +1,118 @@
+name: Publish
+
+# Triggered automatically after CI completes. The jobs below gate on
+# conclusion == 'success' so a failed CI run never publishes an image.
+#
+# CI runs on:
+#   - push to main  → publish-latest emits :latest
+#   - push of v* tag → publish-release emits :<version>, :<major>.<minor>, :<major>
+#
+# Note on tag detection: workflow_run does not reliably surface the tag name in
+# head_branch for tag-triggered CI runs. publish-release therefore checks out the
+# triggering commit and uses `git tag --points-at` to discover any v* tag at that
+# SHA, making version derivation source-of-truth independent of event metadata.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+jobs:
+  publish-latest:
+    name: Publish latest
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      vars.ENABLE_DOCKER_PUBLISH == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Load project.env
+        run: |
+          while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" == \#* ]] && continue
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done < project.env
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.DOCKER_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish-release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    # Scope to push events only (excludes pull_request CI runs).
+    # Tag vs branch distinction is resolved via git inside the job.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      vars.ENABLE_DOCKER_PUBLISH == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Load project.env
+        run: |
+          while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" == \#* ]] && continue
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done < project.env
+
+      # Fetch all tags and check whether a v* tag points at the triggering commit.
+      # head_branch is not used because it reflects the source branch, not the tag,
+      # when CI was triggered by a tag push.
+      - name: Detect v* tag at triggering commit
+        id: version
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git fetch --tags
+          TAG=$(git tag --points-at "$HEAD_SHA" | grep -E '^v[0-9]' | head -1)
+          if [ -z "$TAG" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          VERSION="${TAG#v}"          # strip leading 'v'  -> 1.2.3
+          MAJOR="${VERSION%%.*}"      # remove .minor.patch -> 1
+          MINOR="${VERSION%.*}"       # remove .patch       -> 1.2
+          echo "found=true"         >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "minor=${MINOR}"     >> "$GITHUB_OUTPUT"
+          echo "major=${MAJOR}"     >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.version.outputs.found == 'true'
+
+      - uses: docker/login-action@v3
+        if: steps.version.outputs.found == 'true'
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        if: steps.version.outputs.found == 'true'
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.minor }}
+            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.major }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
