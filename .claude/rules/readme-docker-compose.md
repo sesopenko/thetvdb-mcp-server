@@ -14,7 +14,7 @@ This example must stay accurate as the project evolves.
 
 ### Rules
 
-- The example must always use the published Docker Hub image (`sesopenko/mcp-base:latest`),
+- The example must always use the published Docker Hub image (`sesopenko/thetvdb-mcp-server:latest`),
   not a local `build: .` reference
 - Keep the example minimal — only include what a user needs to get started
 - Do not add optional or advanced configuration to the example; document those separately

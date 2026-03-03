@@ -1,4 +1,4 @@
-# mcp-base
+# thetvdb-mcp-server
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.txt)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/downloads/)
@@ -26,12 +26,12 @@ A bare-bones [FastMCP](https://github.com/jlowin/fastmcp) server template. Use t
 **Without GitHub** — clone, strip the history, and reinitialise:
 
 ```bash
-git clone https://github.com/sesopenko/mcp-base.git my-project
+git clone https://github.com/sesopenko/thetvdb-mcp-server.git my-project
 cd my-project
 rm -rf .git
 git init
 git add .
-git commit -m "chore: bootstrap from mcp-base template"
+git commit -m "chore: bootstrap from thetvdb-mcp-server template"
 ```
 
 ### 2. Customise identity values
@@ -54,8 +54,8 @@ The script is idempotent — safe to run multiple times.
 
    ```yaml
    services:
-     mcp-base:
-       image: sesopenko/mcp-base:latest
+     thetvdb-mcp-server:
+       image: sesopenko/thetvdb-mcp-server:latest
        ports:
          - "8080:8080"
        volumes:
@@ -94,7 +94,7 @@ The script is idempotent — safe to run multiple times.
 4. Start the server:
 
    ```bash
-   uv run python -m mcp_base
+   uv run python -m thetvdb_mcp_server
    ```
 
 ---
@@ -201,15 +201,15 @@ The template follows a clean three-layer separation:
 
 | File | Purpose |
 |---|---|
-| `src/mcp_base/tools.py` | Pure Python functions — one function per tool, no framework coupling |
-| `src/mcp_base/server.py` | FastMCP wiring — registers tool functions with `@mcp.tool()` and runs the server |
-| `src/mcp_base/config.py` | TOML config loading — typed dataclasses for `[server]` and `[logging]` sections |
-| `src/mcp_base/logging.py` | Structured logger factory |
+| `src/thetvdb_mcp_server/tools.py` | Pure Python functions — one function per tool, no framework coupling |
+| `src/thetvdb_mcp_server/server.py` | FastMCP wiring — registers tool functions with `@mcp.tool()` and runs the server |
+| `src/thetvdb_mcp_server/config.py` | TOML config loading — typed dataclasses for `[server]` and `[logging]` sections |
+| `src/thetvdb_mcp_server/logging.py` | Structured logger factory |
 
 ### Adding a tool
 
-1. Add a function to `src/mcp_base/tools.py` with a Google-style docstring and full type annotations.
-2. Import the function in `src/mcp_base/server.py` and register it with `@mcp.tool()`.
+1. Add a function to `src/thetvdb_mcp_server/tools.py` with a Google-style docstring and full type annotations.
+2. Import the function in `src/thetvdb_mcp_server/server.py` and register it with `@mcp.tool()`.
 3. Add a unit test in `tests/unit/`.
 4. Add a row to the **Available Tools** table in this README.
 

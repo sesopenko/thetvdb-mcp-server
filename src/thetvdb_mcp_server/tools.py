@@ -1,4 +1,4 @@
-"""MCP tool implementations for the mcp-base server."""
+"""MCP tool implementations for the thetvdb-mcp-server server."""
 
 
 def health_check() -> dict[str, str]:

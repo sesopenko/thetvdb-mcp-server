@@ -6,7 +6,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from mcp_base.config import AppConfig, LoggingConfig, ServerConfig, load_config
+from thetvdb_mcp_server.config import AppConfig, LoggingConfig, ServerConfig, load_config
 
 VALID_TOML = b"""
 [server]

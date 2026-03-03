@@ -1,4 +1,4 @@
-"""Configuration loading for the mcp-base server.
+"""Configuration loading for the thetvdb-mcp-server server.
 
 Reads a TOML config file and returns typed dataclass instances for each
 section. The default config path is ``config.toml`` in the working directory;

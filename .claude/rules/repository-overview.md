@@ -2,7 +2,7 @@
 
 ## dockerhub/repository-overview-copy.md
 
-`dockerhub/repository-overview-copy.md` is the Docker Hub overview for `sesopenko/mcp-base`.
+`dockerhub/repository-overview-copy.md` is the Docker Hub overview for `sesopenko/thetvdb-mcp-server`.
 It is automatically pushed to Docker Hub on every merge to `main`. Keep it accurate and user-facing
 (Docker Hub visitors, not developers — no badges, no source-install instructions).
 
@@ -21,7 +21,7 @@ Docker Hub copy-paste artifact, not a developer reference.
 
 - Keep the file user-facing: describe what things do, not how they work internally
 - The configuration example must include a descriptive inline TOML comment (`# …`) on every key explaining its purpose
-- The Docker Compose example must use the published image (`sesopenko/mcp-base:latest`), not a local build reference
+- The Docker Compose example must use the published image (`sesopenko/thetvdb-mcp-server:latest`), not a local build reference
 - Do not add developer workflow steps, test instructions, or maintainer notes
 - Do not add a tool row until the tool is implemented and its tests pass
 - Do not remove rows for tools that have been implemented

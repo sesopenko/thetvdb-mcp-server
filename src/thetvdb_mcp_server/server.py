@@ -1,12 +1,12 @@
-"""FastMCP server entrypoint for the mcp-base server.
+"""FastMCP server entrypoint for the thetvdb-mcp-server server.
 
 Run with::
 
-    uv run python -m mcp_base
+    uv run python -m thetvdb_mcp_server
 
 or via the installed script::
 
-    mcp-base
+    thetvdb-mcp-server
 """
 
 import argparse
@@ -14,11 +14,11 @@ from pathlib import Path
 
 import fastmcp
 
-from mcp_base.config import load_config
-from mcp_base.logging import Logger, make_logger
-from mcp_base.tools import health_check as _health_check
+from thetvdb_mcp_server.config import load_config
+from thetvdb_mcp_server.logging import Logger, make_logger
+from thetvdb_mcp_server.tools import health_check as _health_check
 
-mcp = fastmcp.FastMCP("mcp-base")
+mcp = fastmcp.FastMCP("thetvdb-mcp-server")
 
 _logger: Logger | None = None
 
@@ -35,7 +35,7 @@ def health_check() -> dict[str, str]:
 
 def main() -> None:
     """Parse CLI arguments, load configuration, and start the MCP server."""
-    parser = argparse.ArgumentParser(description="mcp-base MCP server")
+    parser = argparse.ArgumentParser(description="thetvdb-mcp-server MCP server")
     parser.add_argument(
         "--config",
         type=Path,
