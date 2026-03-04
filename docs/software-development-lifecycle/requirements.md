@@ -46,19 +46,52 @@ This system is built to use the following api: [https://thetvdb.github.io/v4-api
   - handle `/login` token caching/refresh server-side
 - Later, optionally add higher-level “one-shot” tools to reduce LLM steps/tokens.
 
-## first required api endpoints
+## Credential configuration
 
-| Purpose | MCP Tool (suggested) | TVDB v4 Endpoint | Method | Key Inputs | Notes |
+TVDB credentials are supplied via the `[tvdb]` section of `config.toml`:
+
+```toml
+[tvdb]
+api_key = "your-api-key"   # required; obtain from thetvdb.com developer portal
+# pin = "subscriber-pin"   # optional; only needed for subscriber content
+```
+
+- `api_key` is required.
+- `pin` is optional; omit the key entirely if not a subscriber.
+- The server caches the auth token in memory and refreshes it automatically on expiry (401 response).
+
+## First required api endpoints
+
+### Required tools (initial implementation scope)
+
+| Purpose | MCP Tool | TVDB v4 Endpoint | Method | Key Inputs | Notes |
 |---|---|---|---|---|---|
-| Authenticate / get token (cached + refreshed server-side) | (internal to all tools) | `/login` | POST | `apikey` (and optional `pin`) | Token is required for the rest; cache it in the MCP server. |
-| Search for candidate series by show name + year | `tvdb_search_series(query, year, limit)` | `/search` | GET | `type=series`, `query` (or `q`), `year`, `limit`, `offset` | Primary disambiguation step (name + year). Return compact candidate list. |
-| Fetch canonical/base series record for a chosen seriesId | `tvdb_get_series_naming_bundle(seriesId, ...)` | `/series/{id}` | GET | Path: `id` | Use to confirm canonical title and `firstAired` year for folder naming. |
-| Fetch episode list for a chosen seriesId under a specific season order | `tvdb_get_series_naming_bundle(seriesId, seasonType, ...)` | `/series/{id}/episodes/{season-type}` | GET | Path: `id`, `season-type` | Main endpoint for building SxxExx mapping. Season-type controls ordering. |
-| Fetch episode list with localized titles | `tvdb_get_series_naming_bundle(seriesId, seasonType, lang)` | `/series/{id}/episodes/{season-type}/{lang}` | GET | Path: `id`, `season-type`, `lang` | Use if you want non-default language episode titles. |
-| (Optional) Fetch full/extended series record incl translations/episodes | `tvdb_get_series_extended(seriesId, meta, short)` | `/series/{id}/extended` | GET | Path: `id`; Query: `meta=translations|episodes`, `short=true|false` | Often avoid unless you need extra fields; can be large. |
-| (Optional) Fetch series base record by slug | `tvdb_get_series_by_slug(slug)` | `/series/slug/{slug}` | GET | Path: `slug` | Only needed if you store/receive slugs; not required for name+year flow. |
-| (Optional) Fetch series title translations directly | `tvdb_get_series_translations(seriesId, language)` | `/series/{id}/translations/{language}` | GET | Path: `id`, `language` | Lightweight way to get localized series titles without `/extended`. |
-| (Optional) Fetch a single episode base record (if you already have episodeId) | `tvdb_get_episode(episodeId)` | `/episodes/{id}` | GET | Path: `id` | Not needed for bulk naming if you already pull episode lists from the series endpoint. |
-| (Optional) Fetch a single episode extended record (if you already have episodeId) | `tvdb_get_episode_extended(episodeId)` | `/episodes/{id}/extended` | GET | Path: `id` | Only if you need extra per-episode metadata not in the episode list response. |
-| (Optional) Fetch a single episode translation | `tvdb_get_episode_translation(episodeId, language)` | `/episodes/{id}/translations/{language}` | GET | Path: `id`, `language` | Only if you need per-episode localized titles and aren’t using the series episodes `{lang}` endpoint. |
+| Authenticate / get token (cached + refreshed server-side) | (internal to all tools) | `/login` | POST | `apikey` (and optional `pin`) | Token is required for all other calls; cache in the MCP server and retry once on 401. |
+| Search for candidate series by show name and optional year | `tvdb_search_series(query, year?, limit, offset)` | `/search` | GET | `type=series`, `query` (or `q`), `year` (optional), `limit`, `offset` | Primary disambiguation step. `year` is optional. `limit` and `offset` are exposed so the LLM can page through results. |
+| Fetch base series record **or** episode list, depending on params supplied | `tvdb_get_series_naming_bundle(seriesId, seasonType?, lang?)` | See endpoint selection below | GET | Path: `id`; optional `season-type`, `lang` | Single combined tool; endpoint chosen by which optional params are present (see below). |
+
+#### `tvdb_get_series_naming_bundle` endpoint selection
+
+This is **one tool** with two optional parameters. The endpoint called depends on which params are provided:
+
+| `seasonType` | `lang` | Endpoint called | Purpose |
+|---|---|---|---|
+| omitted | omitted | `GET /series/{id}` | Fetch base series record to confirm canonical title and `firstAired` year. |
+| provided | omitted | `GET /series/{id}/episodes/{seasonType}` | Fetch episode list for SxxExx mapping. Season-type controls ordering (e.g. `official`, `dvd`, `absolute`). |
+| provided | provided | `GET /series/{id}/episodes/{seasonType}/{lang}` | Fetch episode list with localized titles. |
+
+Both episode-list endpoints are **auto-paginated**: the tool fetches all pages internally and returns the complete episode list in a single MCP call.
+
+### Deferred tools (out of scope for initial implementation)
+
+The following tools are identified for potential future use but are **not implemented in the first pass**:
+
+| Purpose | MCP Tool (suggested) | TVDB v4 Endpoint | Method |
+|---|---|---|---|
+| Fetch full/extended series record incl translations/episodes | `tvdb_get_series_extended(seriesId, meta, short)` | `/series/{id}/extended` | GET |
+| Fetch series base record by slug | `tvdb_get_series_by_slug(slug)` | `/series/slug/{slug}` | GET |
+| Fetch series title translations directly | `tvdb_get_series_translations(seriesId, language)` | `/series/{id}/translations/{language}` | GET |
+| Fetch a single episode base record | `tvdb_get_episode(episodeId)` | `/episodes/{id}` | GET |
+| Fetch a single episode extended record | `tvdb_get_episode_extended(episodeId)` | `/episodes/{id}/extended` | GET |
+| Fetch a single episode translation | `tvdb_get_episode_translation(episodeId, language)` | `/episodes/{id}/translations/{language}` | GET |
 
