@@ -53,6 +53,15 @@ Authentication is handled entirely by the MCP server. The LLM is not involved an
 
 On first use, the server calls `POST /login` with the configured `api_key` (and `pin` if provided) and caches the returned bearer token in memory. The token is attached automatically to every subsequent TVDB API request. If a request returns a 401, the server re-authenticates once and retries before surfacing an error.
 
+### Token caching and expiry
+
+The cached token is a JWT. Before every API call, the server must:
+
+1. Decode the JWT (without verifying the signature — the `exp` claim is trusted from TVDB's own response) to read the `exp` field, which is a Unix timestamp (seconds since epoch).
+2. Compare `exp` against the current time. If the token expires in **less than 10 minutes**, proactively fetch a fresh token via `POST /login` before proceeding with the API call.
+
+This proactive refresh prevents in-flight requests from failing mid-operation due to token expiry. The 401-retry path remains as a fallback for unexpected expiry.
+
 ### Credential configuration
 
 TVDB credentials are supplied via the `[tvdb]` section of `config.toml`:
@@ -65,6 +74,39 @@ api_key = "your-api-key"   # required; obtain from thetvdb.com developer portal
 
 - `api_key` is required.
 - `pin` is optional; omit the key entirely if not a subscriber.
+
+### Example Decoded token
+
+```json
+{
+  "age": "",
+  "apikey": "<redacted_string>",
+  "community_supported": false,
+  "exp": 1775228013,
+  "gender": "",
+  "hits_per_day": 100000000,
+  "hits_per_month": 100000000,
+  "id": "<redacted_integer_like_string>",
+  "is_mod": false,
+  "is_system_key": false,
+  "is_trusted": false,
+  "pin": null,
+  "roles": [],
+  "tenant": "tvdb",
+  "uuid": ""
+}
+```
+
+## Rate limiting
+
+The MCP server must enforce a global rate limit of **1 TVDB API call per second** to avoid having access denied due to excessive requests.
+
+### Requirements
+
+- A single shared rate limiter governs all outbound TVDB API calls, regardless of which tool triggered them.
+- Concurrent or simultaneous tool calls must queue through the same limiter — parallelism at the MCP layer must not translate to burst traffic at the TVDB API.
+- If the limiter determines a call must wait, the server sleeps for the required duration before dispatching the request.
+- The rate limit applies to every TVDB API call, including authentication (`POST /login`) and all paginated requests within a single tool call.
 
 ## Required tools (initial implementation scope)
 
