@@ -4,6 +4,48 @@
 
 This system is built to use the following api: [https://thetvdb.github.io/v4-api/swagger.yml](https://thetvdb.github.io/v4-api/swagger.yml)
 
+## First usage scenario
+
+## Example real-world scenario (to guide MCP tool development)
+
+### Context
+- I rip/remux anime Blu-rays that I own into `.mkv` files.
+- I need to organize files so **Emby** correctly identifies the show and episodes.
+- My folder format is:
+
+  /<show name> (<first aired year>)/Season XX/SXXEXX.mkv
+
+- Emby uses **thetvdb.com** matching, primarily based on **show name + first-aired year** parsed from the folder name.
+- I’m building an MCP server that exposes TVDB API endpoints as tools, so an LLM agent (via LibreChat + MCP) can help me:
+  - confirm the correct TVDB series when there are naming collisions,
+  - validate the “first aired” year used in the folder,
+  - pull the correct episode list/ordering so my `SXXEXX` numbering is consistent.
+
+### Typical flow I want to support
+1. Given a folder name like:
+   - `"/Monster (2004)/Season 01/S01E01.mkv"`
+   parse:
+   - `showName = "Monster"`
+   - `year = 2004`
+
+2. Search TVDB for the matching series:
+   - call `/search` with `type=series`, `query=Monster`, `year=2004`
+   - get candidate results (usually 1; sometimes multiple)
+
+3. Select the correct candidate and confirm details:
+   - call `/series/{id}` (and optionally `/series/{id}/extended`)
+   - confirm the canonical title + firstAired year match what I’ll put in the folder name
+
+4. Pull episode metadata for naming/verification:
+   - call `/series/{id}/episodes/{season-type}` (optionally with language variant)
+   - use returned episode list to ensure `Season XX` and `SXXEXX.mkv` numbering matches TVDB’s season ordering
+
+### MCP implementation approach (initial)
+- Keep MCP tools fairly general at first:
+  - expose tools that map closely to the TVDB endpoints needed for this flow
+  - handle `/login` token caching/refresh server-side
+- Later, optionally add higher-level “one-shot” tools to reduce LLM steps/tokens.
+
 ## first required api endpoints
 
 | Purpose | MCP Tool (suggested) | TVDB v4 Endpoint | Method | Key Inputs | Notes |
