@@ -108,24 +108,70 @@ The MCP server must enforce a global rate limit of **1 TVDB API call per second*
 - If the limiter determines a call must wait, the server sleeps for the required duration before dispatching the request.
 - The rate limit applies to every TVDB API call, including authentication (`POST /login`) and all paginated requests within a single tool call.
 
+## Tool docstring clarity
+
+All MCP tool docstrings must be written with LLM clarity as the primary goal. The docstring is the only information an LLM has when deciding how to call a tool, so ambiguity directly causes wasted tokens and incorrect calls.
+
+### Rules
+
+- Describe **what the tool does** and **when to use it** in the opening sentence.
+- Every parameter must state: its type, whether it is required or optional, and what it does.
+- Where a parameter accepts a fixed set of values, **list every valid value** with a plain-language explanation. Do not use "e.g." — enumerate completely.
+- When a tool's behaviour changes depending on which optional parameters are provided, document each mode explicitly so the LLM can choose the right one without guessing.
+- Avoid internal implementation terms (endpoint paths, HTTP methods, pagination mechanics). Describe outcomes, not mechanisms.
+
 ## Required tools (initial implementation scope)
 
-| Purpose | MCP Tool | TVDB v4 Endpoint | Method | Key Inputs | Notes |
-|---|---|---|---|---|---|
-| Search for candidate series by show name and optional year | `tvdb_search_series(query, year?, limit, offset)` | `/search` | GET | `type=series`, `query` (or `q`), `year` (optional), `limit`, `offset` | Primary disambiguation step. `year` is optional. `limit` and `offset` are exposed so the LLM can page through results. |
-| Fetch base series record **or** episode list, depending on params supplied | `tvdb_get_series_naming_bundle(seriesId, seasonType?, lang?)` | See endpoint selection below | GET | Path: `id`; optional `season-type`, `lang` | Single combined tool; endpoint chosen by which optional params are present (see below). |
+### `tvdb_search_series`
 
-#### `tvdb_get_series_naming_bundle` endpoint selection
+**TVDB endpoint**: `GET /search`
 
-This is **one tool** with two optional parameters. The endpoint called depends on which params are provided:
+Search TVDB for series matching a name, optionally filtered by first-aired year. Use this as the first step when you have a show name and need to find the correct TVDB series ID. Returns a list of candidate series; when multiple candidates are returned, use `firstAired` and other metadata to identify the correct one.
 
-| `seasonType` | `lang` | Endpoint called | Purpose |
+| Parameter | Type | Required | Description |
 |---|---|---|---|
-| omitted | omitted | `GET /series/{id}` | Fetch base series record to confirm canonical title and `firstAired` year. |
-| provided | omitted | `GET /series/{id}/episodes/{seasonType}` | Fetch episode list for SxxExx mapping. Season-type controls ordering (e.g. `official`, `dvd`, `absolute`). |
-| provided | provided | `GET /series/{id}/episodes/{seasonType}/{lang}` | Fetch episode list with localized titles. |
+| `query` | string | yes | The show name to search for. |
+| `year` | integer | no | The four-digit year the series first aired. Providing this narrows results and resolves naming collisions between shows that share a title. |
+| `limit` | integer | yes | Number of results to return per page. Use a small value (e.g. `5`) for an initial search; increase if the expected result is not in the first page. |
+| `offset` | integer | yes | Zero-based index of the first result to return. Start at `0`; increment by `limit` to page through further results. |
 
-Both episode-list endpoints are **auto-paginated**: the tool fetches all pages internally and returns the complete episode list in a single MCP call.
+### `tvdb_get_series`
+
+**TVDB endpoint**: `GET /series/{id}`
+
+Fetch the base record for a single series by its TVDB ID. Use this to confirm you have selected the correct show before fetching episode data — it returns the canonical title, `firstAired` year, overview, status, and other series-level metadata. Prefer this tool over re-running a search when you already have a series ID.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `seriesId` | integer | yes | The TVDB numeric series ID, as returned by `tvdb_search_series`. |
+
+### `tvdb_get_series_naming_bundle`
+
+**TVDB endpoints**: `GET /series/{id}`, `GET /series/{id}/episodes/{seasonType}`, `GET /series/{id}/episodes/{seasonType}/{lang}`
+
+Fetch either the base series record or a complete episode list for a known TVDB series ID. The tool operates in two distinct modes determined by whether `seasonType` is provided:
+
+**Mode 1 — series record** (`seasonType` omitted): Returns the canonical series title, `firstAired` year, status, and other series-level metadata. Use this to confirm you have the correct series before fetching episodes.
+
+**Mode 2 — episode list** (`seasonType` provided): Returns every episode in the requested ordering. Use this to map season and episode numbers (`SxxExx`) to episode titles. All pages are fetched automatically; the full episode list is returned in a single call.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `seriesId` | integer | yes | The TVDB numeric series ID, as returned by `tvdb_search_series`. |
+| `seasonType` | string | no | The episode ordering to use. Omit to fetch the base series record instead of episodes. When provided, must be one of the values below. |
+| `lang` | string | no | A TVDB language code (e.g. `eng` for English, `jpn` for Japanese). When provided, episode titles are returned in the requested language. Only valid when `seasonType` is also provided; ignored otherwise. |
+
+#### Valid `seasonType` values
+
+| Value | Meaning | When to use |
+|---|---|---|
+| `official` | Standard broadcast order — episodes numbered as they originally aired on television. | Default choice for most series unless the user specifies otherwise. |
+| `dvd` | DVD release order — episodes numbered as they appear on DVD, which may differ from broadcast order. | Use only when the user explicitly needs DVD ordering. |
+| `absolute` | Absolute sequential numbering across all seasons with no season breaks (episode 1, 2, 3 … N). | Standard for anime and long-running series where fans refer to episodes by absolute number. Use for anime unless the user specifies otherwise. |
+| `alternate` | A community-defined alternate ordering that differs from the official broadcast order. | Use only when the user explicitly requests alternate ordering. |
+| `regional` | Region-specific ordering reflecting how the series aired in a particular country or market. | Use only when the user explicitly requests regional ordering. |
+
+> **Note**: Verify that these values match the `season-type` enum in the TVDB v4 swagger spec during implementation. The swagger is the authoritative source.
 
 ### Deferred tools (out of scope for initial implementation)
 
