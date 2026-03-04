@@ -41,12 +41,19 @@ This system is built to use the following api: [https://thetvdb.github.io/v4-api
    - use returned episode list to ensure `Season XX` and `SXXEXX.mkv` numbering matches TVDB’s season ordering
 
 ### MCP implementation approach (initial)
-- Keep MCP tools fairly general at first:
-  - expose tools that map closely to the TVDB endpoints needed for this flow
-  - handle `/login` token caching/refresh server-side
+- Keep MCP tools fairly general at first: expose tools that map closely to the TVDB endpoints needed for this flow.
+- Authentication is handled transparently server-side; the LLM only calls data tools.
 - Later, optionally add higher-level “one-shot” tools to reduce LLM steps/tokens.
 
-## Credential configuration
+## Authentication
+
+Authentication is handled entirely by the MCP server. The LLM is not involved and has no tools related to authentication.
+
+### How it works
+
+On first use, the server calls `POST /login` with the configured `api_key` (and `pin` if provided) and caches the returned bearer token in memory. The token is attached automatically to every subsequent TVDB API request. If a request returns a 401, the server re-authenticates once and retries before surfacing an error.
+
+### Credential configuration
 
 TVDB credentials are supplied via the `[tvdb]` section of `config.toml`:
 
@@ -58,15 +65,11 @@ api_key = "your-api-key"   # required; obtain from thetvdb.com developer portal
 
 - `api_key` is required.
 - `pin` is optional; omit the key entirely if not a subscriber.
-- The server caches the auth token in memory and refreshes it automatically on expiry (401 response).
 
-## First required api endpoints
-
-### Required tools (initial implementation scope)
+## Required tools (initial implementation scope)
 
 | Purpose | MCP Tool | TVDB v4 Endpoint | Method | Key Inputs | Notes |
 |---|---|---|---|---|---|
-| Authenticate / get token (cached + refreshed server-side) | (internal to all tools) | `/login` | POST | `apikey` (and optional `pin`) | Token is required for all other calls; cache in the MCP server and retry once on 401. |
 | Search for candidate series by show name and optional year | `tvdb_search_series(query, year?, limit, offset)` | `/search` | GET | `type=series`, `query` (or `q`), `year` (optional), `limit`, `offset` | Primary disambiguation step. `year` is optional. `limit` and `offset` are exposed so the LLM can page through results. |
 | Fetch base series record **or** episode list, depending on params supplied | `tvdb_get_series_naming_bundle(seriesId, seasonType?, lang?)` | See endpoint selection below | GET | Path: `id`; optional `season-type`, `lang` | Single combined tool; endpoint chosen by which optional params are present (see below). |
 
