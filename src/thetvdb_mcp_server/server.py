@@ -20,6 +20,7 @@ from thetvdb_mcp_server.logging import Logger, make_logger
 from thetvdb_mcp_server.tools import health_check as _health_check
 from thetvdb_mcp_server.tools import init_tools
 from thetvdb_mcp_server.tools import tvdb_get_series as _tvdb_get_series
+from thetvdb_mcp_server.tools import tvdb_get_series_naming_bundle as _tvdb_get_series_naming_bundle
 from thetvdb_mcp_server.tools import tvdb_search_series as _tvdb_search_series
 
 mcp = fastmcp.FastMCP("thetvdb-mcp-server")
@@ -84,6 +85,58 @@ async def tvdb_get_series(series_id: int) -> dict[str, Any]:
         ``lastAired``, ``status``, ``originalNetwork``, and ``genres``.
     """
     return await _tvdb_get_series(series_id=series_id)
+
+
+@mcp.tool()
+async def tvdb_get_series_naming_bundle(
+    series_id: int,
+    season_type: str | None = None,
+    lang: str | None = None,
+) -> dict[str, Any] | list[dict[str, Any]]:
+    """Fetch naming and episode data for a TV series from TVDB.
+
+    This tool operates in two modes depending on whether ``season_type`` is
+    provided.
+
+    **Mode 1 — Series record** (``season_type`` omitted):
+    Returns the series base record dict (identical to ``tvdb_get_series``).
+    Use this when you need series-level metadata such as name, network, status,
+    and genre without episode detail.
+
+    **Mode 2 — Episode list** (``season_type`` provided, ``lang`` omitted):
+    Returns a combined list of every episode dict across all pages for the
+    requested season ordering. Pagination is handled automatically.
+
+    **Mode 3 — Translated episode list** (``season_type`` and ``lang`` both
+    provided):
+    Same as Mode 2 but requests episode data translated into the specified
+    language. Pagination is handled automatically.
+
+    Args:
+        series_id: Numeric TVDB series ID, e.g. ``78804`` for Doctor Who.
+        season_type: Season ordering to use when fetching episodes. Omit for
+            Mode 1 (series record). Valid values:
+
+            - ``"official"`` — broadcast/streaming order (most common).
+            - ``"dvd"`` — DVD release order; may differ from air order.
+            - ``"absolute"`` — single sequential number across all seasons;
+              common for anime.
+            - ``"alternate"`` — an alternative ordering defined by the
+              community.
+            - ``"regional"`` — ordering used in a specific region.
+            - ``"default"`` — the series default ordering as set on TVDB.
+        lang: Two or three character language code (e.g. ``"eng"``, ``"deu"``)
+            for translated episode data. Only used in Mode 3; ignored when
+            ``season_type`` is omitted.
+
+    Returns:
+        - **Mode 1**: Series base record dict (see ``tvdb_get_series`` for
+          field details).
+        - **Mode 2 / Mode 3**: A flat list of episode dicts. Common fields
+          include ``id``, ``name``, ``seasonNumber``, ``number``,
+          ``aired``, and ``overview``.
+    """
+    return await _tvdb_get_series_naming_bundle(series_id=series_id, season_type=season_type, lang=lang)
 
 
 def main() -> None:

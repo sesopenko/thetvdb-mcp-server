@@ -6,7 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import thetvdb_mcp_server.tools as tools_module
-from thetvdb_mcp_server.tools import health_check, tvdb_get_series, tvdb_search_series
+from thetvdb_mcp_server.tools import (
+    health_check,
+    tvdb_get_series,
+    tvdb_get_series_naming_bundle,
+    tvdb_search_series,
+)
 
 
 def test_health_check_returns_ok() -> None:
@@ -43,6 +48,92 @@ async def test_tvdb_get_series_passes_correct_id_in_path() -> None:
         await tvdb_get_series(series_id=12345)
 
     mock_client.get.assert_awaited_once_with("/series/12345")
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_naming_bundle_mode1_returns_series_dict() -> None:
+    """Mode 1: returns the series dict when season_type is omitted."""
+    series_data = {"id": 78804, "name": "Doctor Who"}
+    mock_client = _make_mock_client({"data": series_data, "status": "success"})
+
+    with patch.object(tools_module, "_client", mock_client):
+        result = await tvdb_get_series_naming_bundle(series_id=78804)
+
+    assert result == series_data
+    mock_client.get.assert_awaited_once_with("/series/78804")
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_naming_bundle_mode1_ignores_lang() -> None:
+    """Mode 1: lang is ignored when season_type is omitted."""
+    series_data = {"id": 78804, "name": "Doctor Who"}
+    mock_client = _make_mock_client({"data": series_data, "status": "success"})
+
+    with patch.object(tools_module, "_client", mock_client):
+        result = await tvdb_get_series_naming_bundle(series_id=78804, lang="eng")
+
+    assert result == series_data
+    mock_client.get.assert_awaited_once_with("/series/78804")
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_naming_bundle_mode2_single_page() -> None:
+    """Mode 2: returns combined episode list from a single-page response."""
+    ep1 = {"id": 1, "name": "Pilot"}
+    ep2 = {"id": 2, "name": "Episode 2"}
+    # First call returns episodes, second call returns empty to stop pagination.
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(
+        side_effect=[
+            {"data": {"episodes": [ep1, ep2]}},
+            {"data": {"episodes": []}},
+        ]
+    )
+
+    with patch.object(tools_module, "_client", mock_client):
+        result = await tvdb_get_series_naming_bundle(series_id=100, season_type="official")
+
+    assert result == [ep1, ep2]
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_naming_bundle_mode2_multi_page() -> None:
+    """Mode 2: returns combined episode list across multiple pages."""
+    ep1 = {"id": 1, "name": "Pilot"}
+    ep2 = {"id": 2, "name": "Episode 2"}
+    ep3 = {"id": 3, "name": "Episode 3"}
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(
+        side_effect=[
+            {"data": {"episodes": [ep1, ep2]}},
+            {"data": {"episodes": [ep3]}},
+            {"data": {"episodes": []}},
+        ]
+    )
+
+    with patch.object(tools_module, "_client", mock_client):
+        result = await tvdb_get_series_naming_bundle(series_id=100, season_type="official")
+
+    assert result == [ep1, ep2, ep3]
+    assert mock_client.get.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_naming_bundle_mode3_includes_lang_in_path() -> None:
+    """Mode 3: language code is included in the request path."""
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(
+        side_effect=[
+            {"data": {"episodes": [{"id": 1}]}},
+            {"data": {"episodes": []}},
+        ]
+    )
+
+    with patch.object(tools_module, "_client", mock_client):
+        await tvdb_get_series_naming_bundle(series_id=200, season_type="official", lang="eng")
+
+    first_call_path = mock_client.get.call_args_list[0][0][0]
+    assert first_call_path == "/series/200/episodes/official/eng"
 
 
 @pytest.mark.asyncio
