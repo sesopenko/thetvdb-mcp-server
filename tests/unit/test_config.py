@@ -6,7 +6,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from thetvdb_mcp_server.config import AppConfig, LoggingConfig, ServerConfig, load_config
+from thetvdb_mcp_server.config import AppConfig, LoggingConfig, ServerConfig, TvdbConfig, load_config
 
 VALID_TOML = b"""
 [server]
@@ -15,6 +15,22 @@ port = 8080
 
 [logging]
 level = "debug"
+
+[tvdb]
+api_key = "testapikey"
+"""
+
+VALID_TOML_WITH_PIN = b"""
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[logging]
+level = "debug"
+
+[tvdb]
+api_key = "testapikey"
+pin = "testpin"
 """
 
 
@@ -26,6 +42,7 @@ def test_load_config_returns_correct_types() -> None:
     assert isinstance(config, AppConfig)
     assert isinstance(config.server, ServerConfig)
     assert isinstance(config.logging, LoggingConfig)
+    assert isinstance(config.tvdb, TvdbConfig)
 
 
 def test_load_config_server_values() -> None:
@@ -67,4 +84,55 @@ def test_load_config_invalid_toml_raises() -> None:
     """load_config raises TOMLDecodeError when the file is malformed."""
     with patch("builtins.open", mock_open(read_data=b"not valid toml [[[[")):
         with pytest.raises(tomllib.TOMLDecodeError):
+            load_config(Path("config.toml"))
+
+
+def test_load_config_tvdb_api_key_only() -> None:
+    """load_config parses [tvdb] with only api_key; pin defaults to None."""
+    with patch("builtins.open", mock_open(read_data=VALID_TOML)):
+        config = load_config(Path("config.toml"))
+
+    assert config.tvdb.api_key == "testapikey"
+    assert config.tvdb.pin is None
+
+
+def test_load_config_tvdb_with_pin() -> None:
+    """load_config parses [tvdb] with both api_key and pin."""
+    with patch("builtins.open", mock_open(read_data=VALID_TOML_WITH_PIN)):
+        config = load_config(Path("config.toml"))
+
+    assert config.tvdb.api_key == "testapikey"
+    assert config.tvdb.pin == "testpin"
+
+
+def test_load_config_missing_tvdb_section_raises() -> None:
+    """load_config raises KeyError when the [tvdb] section is absent."""
+    incomplete = b"""
+[server]
+host = "localhost"
+port = 8080
+
+[logging]
+level = "info"
+"""
+    with patch("builtins.open", mock_open(read_data=incomplete)):
+        with pytest.raises(KeyError):
+            load_config(Path("config.toml"))
+
+
+def test_load_config_missing_tvdb_api_key_raises() -> None:
+    """load_config raises KeyError when api_key is absent from [tvdb]."""
+    incomplete = b"""
+[server]
+host = "localhost"
+port = 8080
+
+[logging]
+level = "info"
+
+[tvdb]
+pin = "somepin"
+"""
+    with patch("builtins.open", mock_open(read_data=incomplete)):
+        with pytest.raises(KeyError):
             load_config(Path("config.toml"))

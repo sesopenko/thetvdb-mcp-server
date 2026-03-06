@@ -26,11 +26,20 @@ class LoggingConfig:
 
 
 @dataclass
+class TvdbConfig:
+    """TVDB API credentials."""
+
+    api_key: str
+    pin: str | None = None
+
+
+@dataclass
 class AppConfig:
     """Top-level application configuration, parsed from a TOML file."""
 
     server: ServerConfig
     logging: LoggingConfig
+    tvdb: TvdbConfig
 
 
 def load_config(path: Path = Path("config.toml")) -> AppConfig:
@@ -58,4 +67,9 @@ def load_config(path: Path = Path("config.toml")) -> AppConfig:
     logging = LoggingConfig(
         level=raw["logging"]["level"],
     )
-    return AppConfig(server=server, logging=logging)
+    tvdb_raw = raw["tvdb"]
+    tvdb = TvdbConfig(
+        api_key=tvdb_raw["api_key"],
+        pin=tvdb_raw.get("pin"),
+    )
+    return AppConfig(server=server, logging=logging, tvdb=tvdb)
