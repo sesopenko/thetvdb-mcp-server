@@ -18,4 +18,4 @@ RUN uv sync --frozen --no-dev
 
 EXPOSE 8080
 
-CMD ["uv", "run", "transmission-mcp", "--config", "/config/config.toml"]
+CMD ["uv", "run", "thetvdb-mcp-server", "--config", "/config/config.toml"]
