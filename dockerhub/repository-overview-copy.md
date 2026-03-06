@@ -53,6 +53,10 @@ port = 8080        # port the MCP server listens on
 
 [logging]
 level = "info"     # log verbosity: debug, info, warning, error
+
+[tvdb]
+api_key = "your-api-key-here"  # TVDB API key from https://thetvdb.com/dashboard/account/apikey (required)
+pin = ""                        # subscriber PIN for extended access; omit or leave blank if not applicable
 ```
 
 ---
@@ -79,7 +83,37 @@ Consult your AI application's documentation for how to register an MCP server.
 
 | Tool | Description |
 |---|---|
-| `health_check` | Returns `{"status": "ok"}` to confirm the server is running. This is a placeholder — replace it with your own tools. |
+| `health_check` | Returns `{"status": "ok"}` to confirm the server is running. |
+| `tvdb_search_series` | Search TVDB for TV series by title, with optional year filter and pagination. |
+| `tvdb_get_series` | Fetch the full base record for a TV series by its TVDB ID. |
+| `tvdb_get_series_naming_bundle` | Fetch series metadata or a complete paginated episode list for a given season ordering. |
+
+---
+
+## Example System Prompt
+
+Copy and adapt this prompt to give your AI assistant clear guidance on using the tools.
+
+```xml
+<system>
+  <role>
+    You are a helpful assistant with access to a TVDB MCP server. Use the available
+    tools to look up TV series information accurately and efficiently.
+  </role>
+  <tools>
+    <tool name="health_check">Check that the MCP server is running and reachable.</tool>
+    <tool name="tvdb_search_series">Search TVDB for TV series by title. Returns a list of matching series records including TVDB IDs. Supports optional year filtering and pagination.</tool>
+    <tool name="tvdb_get_series">Fetch the full base record for a TV series by its TVDB ID, including network, status, genres, and image information.</tool>
+    <tool name="tvdb_get_series_naming_bundle">Fetch series metadata (when season_type is omitted) or a complete paginated episode list for a given season ordering and optional language.</tool>
+  </tools>
+  <guidelines>
+    <item>Call health_check if the user asks whether the server is available.</item>
+    <item>Use tvdb_search_series to find a series TVDB ID before calling tvdb_get_series or tvdb_get_series_naming_bundle.</item>
+    <item>Use tvdb_get_series when the user needs series-level details such as network, status, or genre.</item>
+    <item>Use tvdb_get_series_naming_bundle to retrieve episode lists; specify season_type (e.g. "official") and lang as needed.</item>
+  </guidelines>
+</system>
+```
 
 ---
 

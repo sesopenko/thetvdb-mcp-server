@@ -190,6 +190,9 @@ Copy and adapt this prompt to give your AI assistant clear guidance on using the
 | Tool | Description |
 |---|---|
 | `health_check` | Returns `{"status": "ok"}` to confirm the server is running. |
+| `tvdb_search_series` | Search TVDB for TV series by title, with optional year filter and pagination. |
+| `tvdb_get_series` | Fetch the full base record for a TV series by its TVDB ID. |
+| `tvdb_get_series_naming_bundle` | Fetch series metadata or a complete paginated episode list for a given season ordering. |
 
 > Tools are documented here as they are implemented.
 
