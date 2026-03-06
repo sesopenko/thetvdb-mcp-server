@@ -19,6 +19,7 @@ from thetvdb_mcp_server.config import load_config
 from thetvdb_mcp_server.logging import Logger, make_logger
 from thetvdb_mcp_server.tools import health_check as _health_check
 from thetvdb_mcp_server.tools import init_tools
+from thetvdb_mcp_server.tools import tvdb_get_series as _tvdb_get_series
 from thetvdb_mcp_server.tools import tvdb_search_series as _tvdb_search_series
 
 mcp = fastmcp.FastMCP("thetvdb-mcp-server")
@@ -64,6 +65,25 @@ async def tvdb_search_series(
         ``image_url``, ``overview``, ``status``, and ``tvdb_id``.
     """
     return await _tvdb_search_series(query=query, year=year, offset=offset, limit=limit)
+
+
+@mcp.tool()
+async def tvdb_get_series(series_id: int) -> dict[str, Any]:
+    """Fetch the base record for a single TV series by its TVDB ID.
+
+    Use this tool when you already know the TVDB series ID and need the full
+    series record, including network, status, genres, and image information.
+    To find a series ID first, use ``tvdb_search_series``.
+
+    Args:
+        series_id: Numeric TVDB series ID, e.g. ``78804`` for Doctor Who.
+
+    Returns:
+        The series base record dict from the TVDB ``data`` field. Common fields
+        include ``id``, ``name``, ``slug``, ``image``, ``firstAired``,
+        ``lastAired``, ``status``, ``originalNetwork``, and ``genres``.
+    """
+    return await _tvdb_get_series(series_id=series_id)
 
 
 def main() -> None:

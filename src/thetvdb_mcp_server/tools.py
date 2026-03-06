@@ -34,6 +34,26 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+async def tvdb_get_series(series_id: int) -> dict[str, Any]:
+    """Fetch the base record for a single TV series by its TVDB ID.
+
+    Use this tool when you already know the TVDB series ID and need the full
+    series record, including network, status, genres, and image information.
+    To find a series ID first, use ``tvdb_search_series``.
+
+    Args:
+        series_id: Numeric TVDB series ID, e.g. ``78804`` for Doctor Who.
+
+    Returns:
+        The series base record dict from the TVDB ``data`` field. Common fields
+        include ``id``, ``name``, ``slug``, ``image``, ``firstAired``,
+        ``lastAired``, ``status``, ``originalNetwork``, and ``genres``.
+    """
+    assert _client is not None, "init_tools() must be called before using tools"
+    response = await _client.get(f"/series/{series_id}")
+    return response["data"]  # type: ignore[return-value]
+
+
 async def tvdb_search_series(
     query: str,
     year: int | None = None,

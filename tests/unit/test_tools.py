@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import thetvdb_mcp_server.tools as tools_module
-from thetvdb_mcp_server.tools import health_check, tvdb_search_series
+from thetvdb_mcp_server.tools import health_check, tvdb_get_series, tvdb_search_series
 
 
 def test_health_check_returns_ok() -> None:
@@ -20,6 +20,29 @@ def _make_mock_client(response_data: Any) -> MagicMock:
     mock_client = MagicMock()
     mock_client.get = AsyncMock(return_value=response_data)
     return mock_client
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_returns_data_dict() -> None:
+    """tvdb_get_series returns the data dict from the TVDB response."""
+    series_data = {"id": 78804, "name": "Doctor Who", "slug": "doctor-who"}
+    mock_client = _make_mock_client({"data": series_data, "status": "success"})
+
+    with patch.object(tools_module, "_client", mock_client):
+        result = await tvdb_get_series(series_id=78804)
+
+    assert result == series_data
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_passes_correct_id_in_path() -> None:
+    """tvdb_get_series includes the series ID in the request path."""
+    mock_client = _make_mock_client({"data": {"id": 12345}, "status": "success"})
+
+    with patch.object(tools_module, "_client", mock_client):
+        await tvdb_get_series(series_id=12345)
+
+    mock_client.get.assert_awaited_once_with("/series/12345")
 
 
 @pytest.mark.asyncio
