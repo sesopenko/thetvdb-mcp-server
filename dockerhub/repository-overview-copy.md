@@ -1,11 +1,11 @@
 <!-- This file is copy-pasted into Docker Hub as the repository overview.
      It is NOT developer documentation. Do not read this for project context.
      Edit it only when tools, config, Docker Compose examples, or endpoints change. -->
-# mcp-base
+# thetvdb-mcp-server
 
-A bare-bones [FastMCP](https://github.com/jlowin/fastmcp) server template. Fork this repository to build your own MCP server without starting from scratch.
+A [FastMCP](https://github.com/jlowin/fastmcp) server that exposes [TVDB](https://thetvdb.com/) TV series data to AI assistants via the Model Context Protocol.
 
-[MCP (Model Context Protocol)](https://modelcontextprotocol.io/) is an open standard that lets AI assistants call external tools and services. This template implements MCP over HTTP so any MCP-compatible AI application can reach your server.
+[MCP (Model Context Protocol)](https://modelcontextprotocol.io/) is an open standard that lets AI assistants call external tools and services. This server implements MCP over HTTP so any MCP-compatible AI application can query TV series information from TVDB.
 
 GitHub: [sesopenko/thetvdb-mcp-server](https://github.com/sesopenko/thetvdb-mcp-server)
 
@@ -19,7 +19,7 @@ GitHub: [sesopenko/thetvdb-mcp-server](https://github.com/sesopenko/thetvdb-mcp-
 
    ```yaml
    services:
-     mcp-base:
+     thetvdb-mcp-server:
        image: sesopenko/thetvdb-mcp-server:latest
        ports:
          - "8080:8080"
