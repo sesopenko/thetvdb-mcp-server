@@ -52,6 +52,57 @@ def get_current_datetime(timezone: str) -> str:
     return datetime.now(tz).isoformat()
 
 
+def convert_datetime_timezone(
+    input_datetime: str,
+    input_timezone: str,
+    output_timezone: str,
+) -> dict[str, str]:
+    """Convert a local datetime from one IANA timezone to another.
+
+    Use this tool when you know an airtime in one timezone and need the
+    equivalent local time elsewhere.
+
+    Args:
+        input_datetime: Local datetime in ISO 8601 format *without* a UTC offset,
+            e.g. ``"2026-01-15T23:00:00"`` or ``"2026-01-15 23:00"``.
+        input_timezone: IANA timezone for the input datetime, e.g. ``"Asia/Tokyo"``.
+        output_timezone: IANA timezone to convert into, e.g. ``"America/Edmonton"``.
+
+    Returns:
+        A dict containing both the source and converted datetimes as ISO 8601
+        strings with UTC offsets, plus timezone abbreviations.
+
+    Raises:
+        ValueError: If either timezone is invalid, if ``input_datetime`` is not
+            parseable as ISO 8601, or if ``input_datetime`` already includes a
+            UTC offset.
+    """
+    try:
+        parsed_input = datetime.fromisoformat(input_datetime)
+    except ValueError as exc:
+        raise ValueError(
+            "input_datetime must be a valid ISO 8601 date/time string, for example '2026-01-15T23:00:00'"
+        ) from exc
+
+    if parsed_input.tzinfo is not None:
+        raise ValueError("input_datetime must not include a UTC offset; pass input_timezone separately")
+
+    source_tz = _get_timezone(input_timezone)
+    target_tz = _get_timezone(output_timezone)
+
+    source_datetime = parsed_input.replace(tzinfo=source_tz)
+    converted_datetime = source_datetime.astimezone(target_tz)
+
+    return {
+        "input_datetime": source_datetime.isoformat(),
+        "input_timezone": input_timezone,
+        "input_timezone_abbreviation": source_datetime.tzname() or input_timezone,
+        "output_datetime": converted_datetime.isoformat(),
+        "output_timezone": output_timezone,
+        "output_timezone_abbreviation": converted_datetime.tzname() or output_timezone,
+    }
+
+
 def health_check() -> dict[str, str]:
     """Return a simple health status indicating the server is running.
 
@@ -189,3 +240,11 @@ async def tvdb_search_series(
         params["year"] = year
     response = await _client.get("/search", params=params)
     return response.get("data", [])  # type: ignore[return-value]
+
+
+def _get_timezone(timezone: str) -> ZoneInfo:
+    """Return a ZoneInfo object for a valid IANA timezone name."""
+    try:
+        return ZoneInfo(timezone)
+    except ZoneInfoNotFoundError:
+        raise ValueError(f"Unknown timezone: {timezone!r}") from None

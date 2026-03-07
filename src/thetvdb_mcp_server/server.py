@@ -17,6 +17,7 @@ import fastmcp
 
 from thetvdb_mcp_server.config import load_config
 from thetvdb_mcp_server.logging import Logger, make_logger
+from thetvdb_mcp_server.tools import convert_datetime_timezone as _convert_datetime_timezone
 from thetvdb_mcp_server.tools import get_current_datetime as _get_current_datetime
 from thetvdb_mcp_server.tools import health_check as _health_check
 from thetvdb_mcp_server.tools import init_tools
@@ -49,6 +50,34 @@ def get_current_datetime(timezone: str) -> str:
         ValueError: If ``timezone`` is not a valid IANA timezone name.
     """
     return _get_current_datetime(timezone=timezone)
+
+
+@mcp.tool()
+def convert_datetime_timezone(
+    input_datetime: str,
+    input_timezone: str,
+    output_timezone: str,
+) -> dict[str, str]:
+    """Convert a local datetime from one IANA timezone to another.
+
+    Use this tool when you know an airtime in one timezone and need the
+    equivalent local time elsewhere.
+
+    Args:
+        input_datetime: Local datetime in ISO 8601 format *without* a UTC offset,
+            e.g. ``"2026-01-15T23:00:00"`` or ``"2026-01-15 23:00"``.
+        input_timezone: IANA timezone for the input datetime, e.g. ``"Asia/Tokyo"``.
+        output_timezone: IANA timezone to convert into, e.g. ``"America/Edmonton"``.
+
+    Returns:
+        A dict containing both the source and converted datetimes as ISO 8601
+        strings with UTC offsets, plus timezone abbreviations.
+    """
+    return _convert_datetime_timezone(
+        input_datetime=input_datetime,
+        input_timezone=input_timezone,
+        output_timezone=output_timezone,
+    )
 
 
 @mcp.tool()

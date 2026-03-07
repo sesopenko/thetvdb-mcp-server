@@ -8,6 +8,7 @@ import pytest
 
 import thetvdb_mcp_server.tools as tools_module
 from thetvdb_mcp_server.tools import (
+    convert_datetime_timezone,
     get_current_datetime,
     health_check,
     tvdb_get_series,
@@ -34,6 +35,44 @@ def test_get_current_datetime_invalid_timezone_raises_value_error() -> None:
     """get_current_datetime raises ValueError for an unknown timezone name."""
     with pytest.raises(ValueError, match="Unknown timezone"):
         get_current_datetime("Not/ATimezone")
+
+
+def test_convert_datetime_timezone_tokyo_to_edmonton() -> None:
+    """convert_datetime_timezone converts Tokyo time to Edmonton time."""
+    result = convert_datetime_timezone(
+        input_datetime="2026-01-15T23:00:00",
+        input_timezone="Asia/Tokyo",
+        output_timezone="America/Edmonton",
+    )
+
+    assert result == {
+        "input_datetime": "2026-01-15T23:00:00+09:00",
+        "input_timezone": "Asia/Tokyo",
+        "input_timezone_abbreviation": "JST",
+        "output_datetime": "2026-01-15T07:00:00-07:00",
+        "output_timezone": "America/Edmonton",
+        "output_timezone_abbreviation": "MST",
+    }
+
+
+def test_convert_datetime_timezone_invalid_input_timezone_raises_value_error() -> None:
+    """convert_datetime_timezone raises ValueError for an unknown input timezone."""
+    with pytest.raises(ValueError, match="Unknown timezone"):
+        convert_datetime_timezone(
+            input_datetime="2026-01-15T23:00:00",
+            input_timezone="Not/ARealTimezone",
+            output_timezone="America/Edmonton",
+        )
+
+
+def test_convert_datetime_timezone_rejects_offset_aware_input() -> None:
+    """convert_datetime_timezone rejects input datetimes that already include an offset."""
+    with pytest.raises(ValueError, match="must not include a UTC offset"):
+        convert_datetime_timezone(
+            input_datetime="2026-01-15T23:00:00+09:00",
+            input_timezone="Asia/Tokyo",
+            output_timezone="America/Edmonton",
+        )
 
 
 def test_health_check_returns_ok() -> None:

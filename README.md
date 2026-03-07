@@ -187,13 +187,14 @@ Copy and adapt this prompt to give your AI assistant clear guidance on using the
 
 ## Available Tools
 
-| Tool | Description |
-|---|---|
-| `health_check` | Returns `{"status": "ok"}` to confirm the server is running. |
-| `tvdb_search_series` | Search TVDB for TV series by title, with optional year filter and pagination. |
-| `tvdb_get_series` | Fetch the full base record for a TV series by its TVDB ID. |
+| Tool | Description                                                                             |
+|---|-----------------------------------------------------------------------------------------|
+| `health_check` | Returns `{"status": "ok"}` to confirm the server is running.                            |
+| `tvdb_search_series` | Search TVDB for TV series by title, with optional year filter and pagination.           |
+| `tvdb_get_series` | Fetch the full base record for a TV series by its TVDB ID.                              |
 | `tvdb_get_series_naming_bundle` | Fetch series metadata or a complete paginated episode list for a given season ordering. |
-| `get_current_datetime` | Returns the current date and time for a given IANA timezone as an ISO 8601 string. |
+| `get_current_datetime` | Returns the current date and time for a given IANA timezone as an ISO 8601 string.      |
+| `convert_datetime_timezone` | Converts a time from one IANA timezone to IANA another. |
 
 > Tools are documented here as they are implemented.
 

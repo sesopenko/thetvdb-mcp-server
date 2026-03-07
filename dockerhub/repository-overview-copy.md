@@ -88,6 +88,7 @@ Consult your AI application's documentation for how to register an MCP server.
 | `tvdb_get_series` | Fetch the full base record for a TV series by its TVDB ID. |
 | `tvdb_get_series_naming_bundle` | Fetch series metadata or a complete paginated episode list for a given season ordering. |
 | `get_current_datetime` | Returns the current date and time for a given IANA timezone as an ISO 8601 string. |
+| `convert_datetime_timezone` | Converts a time from one IANA timezone to IANA another.|
 
 ---
 
