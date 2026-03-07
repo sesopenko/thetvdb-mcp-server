@@ -87,6 +87,7 @@ Consult your AI application's documentation for how to register an MCP server.
 | `tvdb_search_series` | Search TVDB for TV series by title, with optional year filter and pagination. |
 | `tvdb_get_series` | Fetch the full base record for a TV series by its TVDB ID. |
 | `tvdb_get_series_naming_bundle` | Fetch series metadata or a complete paginated episode list for a given season ordering. |
+| `get_current_datetime` | Returns the current date and time for a given IANA timezone as an ISO 8601 string. |
 
 ---
 
@@ -105,12 +106,14 @@ Copy and adapt this prompt to give your AI assistant clear guidance on using the
     <tool name="tvdb_search_series">Search TVDB for TV series by title. Returns a list of matching series records including TVDB IDs. Supports optional year filtering and pagination.</tool>
     <tool name="tvdb_get_series">Fetch the full base record for a TV series by its TVDB ID, including network, status, genres, and image information.</tool>
     <tool name="tvdb_get_series_naming_bundle">Fetch series metadata (when season_type is omitted) or a complete paginated episode list for a given season ordering and optional language.</tool>
+    <tool name="get_current_datetime">Return the current date and time for a given IANA timezone (e.g. "UTC", "America/Edmonton") as an ISO 8601 string. Use this to anchor time-sensitive queries such as whether a series is still airing.</tool>
   </tools>
   <guidelines>
     <item>Call health_check if the user asks whether the server is available.</item>
     <item>Use tvdb_search_series to find a series TVDB ID before calling tvdb_get_series or tvdb_get_series_naming_bundle.</item>
     <item>Use tvdb_get_series when the user needs series-level details such as network, status, or genre.</item>
     <item>Use tvdb_get_series_naming_bundle to retrieve episode lists; specify season_type (e.g. "official") and lang as needed.</item>
+    <item>Use get_current_datetime (with the user's local timezone if known, otherwise "UTC") when you need the current date or time to answer questions about airing schedules or episode recency.</item>
   </guidelines>
 </system>
 ```

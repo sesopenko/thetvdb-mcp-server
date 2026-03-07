@@ -1,5 +1,6 @@
 """Unit tests for MCP tool implementations."""
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -7,11 +8,32 @@ import pytest
 
 import thetvdb_mcp_server.tools as tools_module
 from thetvdb_mcp_server.tools import (
+    get_current_datetime,
     health_check,
     tvdb_get_series,
     tvdb_get_series_naming_bundle,
     tvdb_search_series,
 )
+
+
+def test_get_current_datetime_returns_iso_string() -> None:
+    """get_current_datetime returns a string parseable by datetime.fromisoformat."""
+    result = get_current_datetime("UTC")
+    parsed = datetime.fromisoformat(result)
+    assert parsed is not None
+
+
+def test_get_current_datetime_offset_matches_timezone() -> None:
+    """get_current_datetime returns +00:00 offset for UTC."""
+    result = get_current_datetime("UTC")
+    parsed = datetime.fromisoformat(result)
+    assert parsed.utcoffset() == UTC.utcoffset(None)
+
+
+def test_get_current_datetime_invalid_timezone_raises_value_error() -> None:
+    """get_current_datetime raises ValueError for an unknown timezone name."""
+    with pytest.raises(ValueError, match="Unknown timezone"):
+        get_current_datetime("Not/ATimezone")
 
 
 def test_health_check_returns_ok() -> None:

@@ -17,6 +17,7 @@ import fastmcp
 
 from thetvdb_mcp_server.config import load_config
 from thetvdb_mcp_server.logging import Logger, make_logger
+from thetvdb_mcp_server.tools import get_current_datetime as _get_current_datetime
 from thetvdb_mcp_server.tools import health_check as _health_check
 from thetvdb_mcp_server.tools import init_tools
 from thetvdb_mcp_server.tools import tvdb_get_series as _tvdb_get_series
@@ -26,6 +27,28 @@ from thetvdb_mcp_server.tools import tvdb_search_series as _tvdb_search_series
 mcp = fastmcp.FastMCP("thetvdb-mcp-server")
 
 _logger: Logger | None = None
+
+
+@mcp.tool()
+def get_current_datetime(timezone: str) -> str:
+    """Return the current date and time in the given IANA timezone.
+
+    Use this tool when you need to know the current date or time, for example
+    to determine whether a series is currently airing or to calculate how long
+    ago an episode aired.
+
+    Args:
+        timezone: IANA timezone name, e.g. ``"America/Edmonton"``,
+            ``"Europe/London"``, or ``"UTC"``.
+
+    Returns:
+        ISO 8601 datetime string with UTC offset, e.g.
+        ``"2026-03-06T07:30:00-07:00"``.
+
+    Raises:
+        ValueError: If ``timezone`` is not a valid IANA timezone name.
+    """
+    return _get_current_datetime(timezone=timezone)
 
 
 @mcp.tool()
