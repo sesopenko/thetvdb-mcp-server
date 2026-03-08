@@ -140,8 +140,24 @@ async def test_tvdb_get_series_naming_bundle_mode1_ignores_lang() -> None:
 @pytest.mark.asyncio
 async def test_tvdb_get_series_naming_bundle_mode2_single_page() -> None:
     """Mode 2: returns combined episode list from a single-page response."""
-    ep1 = {"id": 1, "name": "Pilot"}
-    ep2 = {"id": 2, "name": "Episode 2"}
+    ep1 = {
+        "id": 1,
+        "name": "Pilot",
+        "aired": "2020-01-01",
+        "number": 1,
+        "seasonNumber": 1,
+        "image": "image_url",
+        "overview": "An overview",
+    }
+    ep2 = {
+        "id": 2,
+        "name": "Episode 2",
+        "aired": "2020-01-08",
+        "number": 2,
+        "seasonNumber": 1,
+        "image": "image_url_2",
+        "overview": "Another overview",
+    }
     # First call returns episodes, second call returns empty to stop pagination.
     mock_client = MagicMock()
     mock_client.get = AsyncMock(
@@ -154,15 +170,43 @@ async def test_tvdb_get_series_naming_bundle_mode2_single_page() -> None:
     with patch.object(tools_module, "_client", mock_client):
         result = await tvdb_get_series_naming_bundle(series_id=100, season_type="official")
 
-    assert result == [ep1, ep2]
+    expected = [
+        {"aired": "2020-01-01", "number": 1, "seasonNumber": 1},
+        {"aired": "2020-01-08", "number": 2, "seasonNumber": 1},
+    ]
+    assert result == expected
 
 
 @pytest.mark.asyncio
 async def test_tvdb_get_series_naming_bundle_mode2_multi_page() -> None:
     """Mode 2: returns combined episode list across multiple pages."""
-    ep1 = {"id": 1, "name": "Pilot"}
-    ep2 = {"id": 2, "name": "Episode 2"}
-    ep3 = {"id": 3, "name": "Episode 3"}
+    ep1 = {
+        "id": 1,
+        "name": "Pilot",
+        "aired": "2020-01-01",
+        "number": 1,
+        "seasonNumber": 1,
+        "image": "image_url",
+        "overview": "An overview",
+    }
+    ep2 = {
+        "id": 2,
+        "name": "Episode 2",
+        "aired": "2020-01-08",
+        "number": 2,
+        "seasonNumber": 1,
+        "image": "image_url_2",
+        "overview": "Another overview",
+    }
+    ep3 = {
+        "id": 3,
+        "name": "Episode 3",
+        "aired": "2020-01-15",
+        "number": 3,
+        "seasonNumber": 1,
+        "image": "image_url_3",
+        "overview": "Yet another overview",
+    }
     mock_client = MagicMock()
     mock_client.get = AsyncMock(
         side_effect=[
@@ -175,7 +219,12 @@ async def test_tvdb_get_series_naming_bundle_mode2_multi_page() -> None:
     with patch.object(tools_module, "_client", mock_client):
         result = await tvdb_get_series_naming_bundle(series_id=100, season_type="official")
 
-    assert result == [ep1, ep2, ep3]
+    expected = [
+        {"aired": "2020-01-01", "number": 1, "seasonNumber": 1},
+        {"aired": "2020-01-08", "number": 2, "seasonNumber": 1},
+        {"aired": "2020-01-15", "number": 3, "seasonNumber": 1},
+    ]
+    assert result == expected
     assert mock_client.get.await_count == 3
 
 
@@ -195,6 +244,38 @@ async def test_tvdb_get_series_naming_bundle_mode3_includes_lang_in_path() -> No
 
     first_call_path = mock_client.get.call_args_list[0][0][0]
     assert first_call_path == "/series/200/episodes/official/eng"
+
+
+@pytest.mark.asyncio
+async def test_tvdb_get_series_naming_bundle_strips_extra_fields() -> None:
+    """Returns only aired, number, and seasonNumber for each episode."""
+    episode_with_many_fields = {
+        "id": 999,
+        "tvdb_id": "999",
+        "name": "Test Episode",
+        "aired": "2020-05-15",
+        "number": 5,
+        "seasonNumber": 2,
+        "image": "https://example.com/image.jpg",
+        "overview": "A detailed episode overview",
+        "runtime": 45,
+        "type": "standard",
+        "status": "aired",
+    }
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(
+        side_effect=[
+            {"data": {"episodes": [episode_with_many_fields]}},
+            {"data": {"episodes": []}},
+        ]
+    )
+
+    with patch.object(tools_module, "_client", mock_client):
+        result = await tvdb_get_series_naming_bundle(series_id=100, season_type="official")
+
+    assert result == [{"aired": "2020-05-15", "number": 5, "seasonNumber": 2}]
+    # Verify no extra fields are present.
+    assert len(result[0]) == 3
 
 
 @pytest.mark.asyncio

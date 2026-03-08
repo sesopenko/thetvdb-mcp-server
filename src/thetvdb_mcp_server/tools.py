@@ -9,6 +9,7 @@ from thetvdb_mcp_server.rate_limiter import tvdb_rate_limiter
 from thetvdb_mcp_server.tvdb_client import TvdbClient
 
 _client: TvdbClient | None = None
+_EPISODE_FIELDS = {"aired", "number", "seasonNumber"}
 
 
 def init_tools(config: AppConfig) -> None:
@@ -200,7 +201,7 @@ async def tvdb_get_series_naming_bundle(
             break
         episodes.extend(page_episodes)
         page += 1
-    return episodes
+    return [{k: v for k, v in ep.items() if k in _EPISODE_FIELDS} for ep in episodes]
 
 
 async def tvdb_search_series(
